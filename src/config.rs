@@ -15,6 +15,8 @@ pub struct Config {
     pub sound_interval_max: f32,
     /// Sound volume 0.0..=1.0
     pub volume: f32,
+    /// Output device name; empty = system default
+    pub audio_device: String,
     /// Video playback speed (1.0 = original, <1 slower)
     pub video_speed: f32,
     /// Derive playback speed from walk_speed so the step matches the movement
@@ -41,6 +43,7 @@ impl Default for Config {
             sound_interval_min: 30.0,
             sound_interval_max: 120.0,
             volume: 0.8,
+            audio_device: String::new(),
             video_speed: 0.5,
             animation_sync: false,
             sync_walk_at_1x: 45.0,

@@ -2,6 +2,7 @@
 //! rodio 0.22: MixerDeviceSink + Player (OutputStream/Sink were removed).
 
 use rand::RngExt;
+use rodio::cpal::traits::{DeviceTrait, HostTrait};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -17,20 +18,54 @@ pub struct SoundPlayer {
     pub sounds: Vec<PathBuf>,
 }
 
+/// Names of all available output devices.
+#[allow(deprecated)] // name() gives the friendly name users see
+pub fn list_output_devices() -> Vec<String> {
+    let host = rodio::cpal::default_host();
+    match host.output_devices() {
+        Ok(devices) => devices.filter_map(|d| d.name().ok()).collect(),
+        Err(_) => Vec::new(),
+    }
+}
+
+/// Open a sink for the named device, or the system default when `device` is empty.
+#[allow(deprecated)]
+fn open_sink(device: &str) -> Result<rodio::stream::MixerDeviceSink, String> {
+    if !device.is_empty() {
+        let host = rodio::cpal::default_host();
+        if let Ok(devices) = host.output_devices() {
+            for d in devices {
+                if d.name().map(|n| n == device).unwrap_or(false) {
+                    return rodio::stream::DeviceSinkBuilder::from_device(d)
+                        .and_then(|b| b.open_stream())
+                        .map_err(|e| e.to_string());
+                }
+            }
+        }
+        eprintln!("[sound] output device {device:?} not found, using system default");
+    }
+    rodio::stream::DeviceSinkBuilder::open_default_sink().map_err(|e| e.to_string())
+}
+
 impl SoundPlayer {
-    /// Scan the sounds/ folder and start the audio thread.
-    pub fn new(sounds_dir: &std::path::Path) -> Self {
+    /// Scan the sounds/ folder and start the audio thread on `device`.
+    pub fn new(sounds_dir: &std::path::Path, device: &str) -> Self {
         let sounds = scan_sounds(sounds_dir);
 
         let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || audio_thread(rx));
+        let device = device.to_string();
+        std::thread::spawn(move || audio_thread(rx, device));
 
         Self { tx, sounds }
     }
 
     /// Re-scan the sounds folder, so files added while running are picked up.
     pub fn refresh(&mut self, sounds_dir: &std::path::Path) {
-        self.sounds = scan_sounds(sounds_dir);
+        let new = scan_sounds(sounds_dir);
+        if new.len() != self.sounds.len() {
+            eprintln!("[sound] sounds folder now has {} file(s)", new.len());
+        }
+        self.sounds = new;
     }
 
     /// Play a random sound. Returns an approximate duration in seconds.
@@ -40,6 +75,7 @@ impl SoundPlayer {
             return 0.0;
         }
         let path = self.sounds[rng.random_range(0..self.sounds.len())].clone();
+        eprintln!("[sound] play_random -> {:?}", path);
         let _ = self.tx.send(SoundCmd::Play { path, volume });
         // Rough estimate: 2–5 s, precision is not critical
         rng.random_range(2.0..5.0)
@@ -95,11 +131,17 @@ fn scan_sounds(dir: &std::path::Path) -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
-fn audio_thread(rx: Receiver<SoundCmd>) {
-    let sink = match rodio::stream::DeviceSinkBuilder::open_default_sink() {
-        Ok(s) => s,
+fn audio_thread(rx: Receiver<SoundCmd>, device: String) {
+    let sink = match open_sink(&device) {
+        Ok(s) => {
+            eprintln!(
+                "[sound] audio device opened: {}",
+                if device.is_empty() { "<system default>" } else { &device }
+            );
+            s
+        }
         Err(e) => {
-            eprintln!("Could not open audio device ({e}), sound disabled");
+            eprintln!("[sound] could not open audio device ({e}), sound disabled");
             // Still drain commands so the sender never blocks
             for _ in rx {}
             return;
@@ -117,10 +159,11 @@ fn audio_thread(rx: Receiver<SoundCmd>) {
                         player.clear();
                         player.set_volume(volume);
                         player.append(source);
+                        eprintln!("[sound] playing {:?} (volume {volume})", path);
                     }
-                    Err(e) => eprintln!("Failed to decode {:?}: {e}", path),
+                    Err(e) => eprintln!("[sound] failed to decode {:?}: {e}", path),
                 },
-                Err(e) => eprintln!("Failed to open {:?}: {e}", path),
+                Err(e) => eprintln!("[sound] failed to open {:?}: {e}", path),
             },
             SoundCmd::SetVolume(v) => {
                 player.set_volume(v);

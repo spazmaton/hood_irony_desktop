@@ -25,7 +25,7 @@ fn main() -> Result<()> {
     }
 
     let sounds_dir = config::assets_dir().join("sounds");
-    let sound = sound::SoundPlayer::new(&sounds_dir);
+    let sound = sound::SoundPlayer::new(&sounds_dir, &cfg.audio_device);
     if !sound.has_sounds() {
         eprintln!("No sounds in assets/sounds/ — the pet will walk silently");
     }

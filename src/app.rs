@@ -39,6 +39,8 @@ pub struct App {
     /// Folder with sounds, rescanned periodically
     sounds_dir: std::path::PathBuf,
     last_sound_scan: Instant,
+    /// Available audio output devices
+    devices: Vec<String>,
 }
 
 impl App {
@@ -65,6 +67,7 @@ impl App {
             fps_window: Instant::now(),
             sounds_dir: crate::config::assets_dir().join("sounds"),
             last_sound_scan: Instant::now(),
+            devices: crate::sound::list_output_devices(),
         }
     }
 
@@ -494,6 +497,8 @@ impl App {
 
                 // --- Sound ---
                 section(ui, "Sound");
+                let mut device_changed = false;
+                let devices = self.devices.clone();
                 egui::Grid::new("g_sound")
                     .num_columns(2)
                     .spacing([12.0, 10.0])
@@ -506,6 +511,36 @@ impl App {
                             "",
                             &mut self.dirty,
                         );
+                        ui.label("Output device");
+                        let selected = if self.cfg.audio_device.is_empty() {
+                            "System default".to_owned()
+                        } else {
+                            self.cfg.audio_device.clone()
+                        };
+                        egui::ComboBox::from_id_salt("audio_device")
+                            .selected_text(selected)
+                            .show_ui(ui, |ui| {
+                                if ui
+                                    .selectable_label(
+                                        self.cfg.audio_device.is_empty(),
+                                        "System default",
+                                    )
+                                    .clicked()
+                                {
+                                    self.cfg.audio_device.clear();
+                                    device_changed = true;
+                                }
+                                for d in &devices {
+                                    if ui
+                                        .selectable_label(*d == self.cfg.audio_device, d)
+                                        .clicked()
+                                    {
+                                        self.cfg.audio_device = d.clone();
+                                        device_changed = true;
+                                    }
+                                }
+                            });
+                        ui.end_row();
                         ui.label("Interval, sec");
                         ui.horizontal(|ui| {
                             let changed_min = ui
@@ -547,6 +582,12 @@ impl App {
                         );
                         ui.end_row();
                     });
+
+                if device_changed {
+                    // Restart the audio thread on the newly selected device
+                    self.sound = SoundPlayer::new(&self.sounds_dir.clone(), &self.cfg.audio_device);
+                    self.dirty = true;
+                }
 
                 // --- Appearance ---
                 section(ui, "Appearance");
