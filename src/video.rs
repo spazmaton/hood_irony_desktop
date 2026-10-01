@@ -50,17 +50,22 @@ struct FrameBuffer {
     frames: Mutex<VecDeque<Vec<u8>>>,
     cond: Condvar,
     cap: usize,
+    closed: AtomicBool,
 }
 
 impl FrameBuffer {
+    /// Push a frame. Blocks while the buffer is full, which throttles ffmpeg
+    /// through pipe backpressure. This guarantees sequential frames with no drops.
     fn push(&self, frame: Vec<u8>) {
         let mut q = self.frames.lock().unwrap();
-        while q.len() >= self.cap {
-            // The decoder ran ahead; drop the oldest frame
-            q.pop_front();
+        while q.len() >= self.cap && !self.closed.load(Ordering::Relaxed) {
+            q = self.cond.wait(q).unwrap();
+        }
+        if self.closed.load(Ordering::Relaxed) {
+            return;
         }
         q.push_back(frame);
-        self.cond.notify_one();
+        self.cond.notify_all();
     }
 
     fn pop(&self, wait: Duration) -> Option<Vec<u8>> {
@@ -68,11 +73,16 @@ impl FrameBuffer {
         if q.is_empty() {
             let (guard, _timeout) = self
                 .cond
-                .wait_timeout_while(q, wait, |q| q.is_empty())
+                .wait_timeout_while(q, wait, |q| q.is_empty() && !self.closed.load(Ordering::Relaxed))
                 .unwrap();
             q = guard;
         }
-        q.pop_front()
+        let frame = q.pop_front();
+        if frame.is_some() {
+            // Wake the (possibly blocked) producer
+            self.cond.notify_all();
+        }
+        frame
     }
 }
 
@@ -94,7 +104,8 @@ impl VideoPlayer {
             buffer: Arc::new(FrameBuffer {
                 frames: Mutex::new(VecDeque::new()),
                 cond: Condvar::new(),
-                cap: 30,
+                cap: 12,
+                closed: AtomicBool::new(false),
             }),
             stop: Arc::new(AtomicBool::new(false)),
         };
@@ -191,6 +202,7 @@ impl VideoPlayer {
 impl Drop for VideoPlayer {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
+        self.buffer.closed.store(true, Ordering::Relaxed);
         self.buffer.cond.notify_all();
     }
 }

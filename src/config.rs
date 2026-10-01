@@ -17,6 +17,10 @@ pub struct Config {
     pub volume: f32,
     /// Video playback speed (1.0 = original, <1 slower)
     pub video_speed: f32,
+    /// Derive playback speed from walk_speed so the step matches the movement
+    pub animation_sync: bool,
+    /// Walk speed (px/s) at which playback is 1x; used by animation_sync
+    pub sync_walk_at_1x: f32,
     /// Cut out the green screen (shimeji mode). false = green screen, like the meme
     pub chroma_key: bool,
     /// Keep animating while idle (true) or only while walking (false)
@@ -38,6 +42,8 @@ impl Default for Config {
             sound_interval_max: 120.0,
             volume: 0.8,
             video_speed: 0.5,
+            animation_sync: false,
+            sync_walk_at_1x: 45.0,
             chroma_key: false,
             animate_when_idle: false,
             video_audio: false,

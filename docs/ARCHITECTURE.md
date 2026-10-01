@@ -38,8 +38,11 @@ thread, sound goes through `rodio`, and the tray uses `tray-icon`.
 ## Video pipeline
 
 1. On start, `ffmpeg -stream_loop -1 -i pet.mp4 -an -vf scale=W:H -f rawvideo -pix_fmt rgb24 -` is spawned.
-2. A background thread reads stdout and pushes frames into an
-   `Arc<Mutex<VecDeque<Frame>>>` (buffer of ~30 frames, oldest dropped).
+2. A background thread reads stdout and pushes frames into a **bounded blocking
+   buffer** (12 frames). When it is full the producer blocks, which throttles
+   ffmpeg through pipe backpressure — so frames are always sequential and none
+   are dropped. (An unbounded/dropping buffer makes playback run at ffmpeg's
+   decode speed instead of the real frame rate.)
 3. The egui update pulls frames by real elapsed time using a playback
    accumulator (so uneven repaints do not cause stutter) and draws them as a texture.
 4. Memory stays low: frames are not accumulated, only a small look-ahead buffer.
@@ -75,8 +78,9 @@ config is reserved for the future.
 - **Walk** — the window moves along X; at the screen edge it flips direction
   and mirrors the video (egui UV flip)
 - **Sound** — briefly freezes (optional), plays a random file
-- **Dragged** — the window follows the cursor
-- Fall after drop: `vy += g` until the bottom edge, then Idle
+- **Dragged** — the window follows the cursor; drag velocity is tracked
+- Release: the pet keeps the drag velocity as throw inertia, flies, bounces
+  off walls and the floor, and can settle (playing a `hit_*` sound on contact)
 
 ## Dragging (the important bit)
 

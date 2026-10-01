@@ -32,10 +32,13 @@ Notes on non-obvious things, already handled or likely to come up.
 - There is no `ffprobe` in the sidecar package, so `probe()` parses the stderr
   of `ffmpeg -i <file>` (note the `-i`, otherwise ffmpeg treats the file as an
   *output* and reports "no video stream").
-- Read rawvideo from stdout in a separate thread with a bounded buffer; never
-  read in the egui update.
-- `-stream_loop -1` loops the input; the decoder runs as fast as it can, so the
-  buffer drops the oldest frames to stay current.
+- Read rawvideo from stdout in a separate thread with a **bounded blocking**
+  buffer; never read in the egui update.
+- **Do not use a drop-oldest buffer.** ffmpeg without `-re` decodes far faster
+  than real time; if the buffer discards the oldest frames, the frames you pull
+  are always the newest, so the perceived speed becomes ffmpeg's *decode*
+  speed. Block the producer instead (backpressure) so frames stay in order.
+- `-stream_loop -1` loops the input.
 
 ## Window position
 

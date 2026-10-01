@@ -24,6 +24,8 @@ transparent. See `chroma_to_rgba` in `src/video.rs`.
 - Format: `*.mp3` or `*.wav`, any names (ASCII without spaces is safer)
 - How many: 3–10 short clips (1–5 s) from the hood irony meme
 - Selection: random file at a random interval (default 30–120 s)
+- Landing: files whose name starts with `hit_` (e.g. `hit_slap.mp3`) play
+  when the pet hits the ground after a throw/drag
 
 ## Tray icon
 

@@ -10,6 +10,10 @@
 - [x] Tray icon: Pause / Settings / Quit
 - [x] Settings window with a live preview
 - [x] `config.toml` (size, speeds, sound interval, volume)
+- [x] Accurate video timing (blocking buffer, no dropped frames)
+- [x] Throw physics (drag inertia, bounce, landing sound)
+- [x] Auto-sync of walk animation to walk speed
+- [x] Playback fps readout
 - [ ] Release build
 
 ## v0.2 — polish
@@ -19,6 +23,12 @@
 - [ ] Remember start position between runs
 - [ ] Multi-monitor support
 
+## v0.3 — real shimeji
+
+- [ ] Walk on top of window title bars / the taskbar (WinAPI `EnumWindows`)
+- [ ] Fall / jump off when a window moves or closes
+- [ ] Climb window edges
+
 ## v??? — ideas
 
 - [ ] Click reactions (effects / sounds)
@@ -27,4 +37,5 @@
 
 ## Status
 
-Current: v0.1 feature-complete; animation timing and dragging reworked.
+Current: v0.2 — video timing fixed, throw physics and animation sync added.
+

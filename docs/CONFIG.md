@@ -22,6 +22,12 @@ volume = 0.8
 # Video playback speed (1.0 = original, <1 slower).
 video_speed = 0.5
 
+# Derive playback speed from walk_speed so the step matches the movement.
+animation_sync = false
+
+# Walk speed (px/s) at which playback is 1x; used by animation_sync.
+sync_walk_at_1x = 45.0
+
 # Cut out the green screen (shimeji mode).
 # false = green screen background, like the meme.
 chroma_key = false

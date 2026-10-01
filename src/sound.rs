@@ -52,6 +52,28 @@ impl SoundPlayer {
         rng.random_range(2.0..5.0)
     }
 
+    /// Play a random landing sound (file name starts with `hit_`).
+    /// Returns false if there are none.
+    pub fn play_hit(&self, volume: f32) -> bool {
+        let hits: Vec<&PathBuf> = self
+            .sounds
+            .iter()
+            .filter(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.to_ascii_lowercase().starts_with("hit_"))
+                    .unwrap_or(false)
+            })
+            .collect();
+        if hits.is_empty() {
+            return false;
+        }
+        let mut rng = rand::rng();
+        let path = hits[rng.random_range(0..hits.len())].clone();
+        let _ = self.tx.send(SoundCmd::Play { path: path.clone(), volume });
+        true
+    }
+
     /// Reserved: volume control from the tray (v0.2)
     #[allow(dead_code)]
     pub fn set_volume(&self, volume: f32) {

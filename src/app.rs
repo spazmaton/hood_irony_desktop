@@ -6,7 +6,7 @@ use crate::pet::Pet;
 use crate::sound::SoundPlayer;
 use crate::tray::{Tray, TrayEvent};
 use crate::video::VideoPlayer;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub fn settings_viewport_id() -> egui::ViewportId {
     egui::ViewportId(egui::Id::new("settings"))
@@ -32,6 +32,10 @@ pub struct App {
     pub frame_accum: f64,
     /// Last outer position sent to the OS (avoids redundant window moves)
     pub last_pos_sent: Option<egui::Pos2>,
+    /// Measured playback frame rate (for the settings readout)
+    pub measured_fps: f32,
+    fps_count: u32,
+    fps_window: Instant,
 }
 
 impl App {
@@ -53,6 +57,9 @@ impl App {
             dirty: false,
             frame_accum: 0.0,
             last_pos_sent: None,
+            measured_fps: 0.0,
+            fps_count: 0,
+            fps_window: Instant::now(),
         }
     }
 
@@ -116,6 +123,16 @@ impl App {
         }
     }
 
+    /// Playback speed actually used, honoring auto-sync with the walk speed.
+    fn effective_speed(&self) -> f32 {
+        let s = if self.cfg.animation_sync {
+            self.cfg.walk_speed / self.cfg.sync_walk_at_1x.max(1.0)
+        } else {
+            self.cfg.video_speed
+        };
+        s.clamp(0.05, 3.0)
+    }
+
     /// Pull video frames according to real elapsed time.
     /// Uses an accumulator so playback stays in sync even if repaints are uneven.
     fn update_video_frame(&mut self, ctx: &egui::Context, dt: f64) {
@@ -129,7 +146,7 @@ impl App {
         }
 
         let frame_interval = video.frame_interval().as_secs_f64();
-        let speed = self.cfg.video_speed.max(0.05) as f64;
+        let speed = self.effective_speed() as f64;
         self.frame_accum += dt * speed;
 
         let mut advance = 0u32;
@@ -145,7 +162,8 @@ impl App {
             return;
         }
 
-        // Show the newest of the frames we just consumed
+        // The producer is throttled by backpressure, so frames arrive in order
+        // and we simply take `advance` of them.
         let mut last = None;
         for _ in 0..advance {
             match video.next_frame(Duration::ZERO) {
@@ -154,6 +172,7 @@ impl App {
             }
         }
         if let Some(bytes) = last {
+            self.fps_count += advance;
             let img = egui::ColorImage::from_rgba_unmultiplied(
                 [video.width as usize, video.height as usize],
                 &bytes,
@@ -163,6 +182,14 @@ impl App {
             } else {
                 self.texture = Some(ctx.load_texture("pet", img, egui::TextureOptions::NEAREST));
             }
+        }
+
+        // Refresh the measured fps roughly twice a second
+        let elapsed = self.fps_window.elapsed().as_secs_f32();
+        if elapsed >= 0.5 {
+            self.measured_fps = self.fps_count as f32 / elapsed;
+            self.fps_count = 0;
+            self.fps_window = Instant::now();
         }
     }
 }
@@ -201,7 +228,7 @@ impl eframe::App for App {
         if response.dragged() {
             if let Some(pet) = &mut self.pet {
                 let local = ctx.input(|i| i.pointer.latest_pos().unwrap_or_default());
-                pet.drag_update(egui::Vec2::new(local.x, local.y));
+                pet.drag_update(egui::Vec2::new(local.x, local.y), dt as f32);
             }
         }
         if response.drag_stopped() {
@@ -213,10 +240,13 @@ impl eframe::App for App {
         // --- Logic ---
         if let Some(pet) = &mut self.pet {
             pet.screen = monitor;
-            let should_sound = pet.update(dt as f32, &self.cfg);
-            if should_sound && self.sound.has_sounds() {
+            let pu = pet.update(dt as f32, &self.cfg);
+            if pu.random_sound && self.sound.has_sounds() {
                 let dur = self.sound.play_random(self.cfg.volume);
                 pet.play_sound(dur, &self.cfg);
+            }
+            if pu.landed {
+                self.sound.play_hit(self.cfg.volume);
             }
 
             // Move the window only when it actually moved (fewer OS window ops = smoother)
@@ -392,24 +422,62 @@ impl App {
 
                 // --- Animation ---
                 section(ui, "Animation");
+                let speed = self.effective_speed();
                 egui::Grid::new("g_anim")
                     .num_columns(2)
                     .spacing([12.0, 10.0])
                     .show(ui, |ui| {
-                        row_slider(
-                            ui,
-                            "Video speed",
-                            &mut self.cfg.video_speed,
-                            0.1..=1.5,
-                            "x",
-                            &mut self.dirty,
-                        );
+                        let sync = &mut self.cfg.animation_sync;
+                        row_check(ui, "Sync to walk speed", sync, &mut self.dirty);
+
+                        ui.label("Video speed");
+                        let enabled = !self.cfg.animation_sync;
+                        if ui
+                            .add_enabled(
+                                enabled,
+                                egui::Slider::new(&mut self.cfg.video_speed, 0.1..=1.5)
+                                    .suffix("x"),
+                            )
+                            .changed()
+                        {
+                            self.dirty = true;
+                        }
+                        ui.end_row();
+
+                        if self.cfg.animation_sync {
+                            ui.label("Walk speed at 1x");
+                            if ui
+                                .add(
+                                    egui::DragValue::new(&mut self.cfg.sync_walk_at_1x)
+                                        .range(5.0..=300.0)
+                                        .suffix(" px/s")
+                                        .speed(1.0),
+                                )
+                                .changed()
+                            {
+                                self.dirty = true;
+                            }
+                            ui.end_row();
+                        }
+
                         row_check(
                             ui,
                             "Animate while idle",
                             &mut self.cfg.animate_when_idle,
                             &mut self.dirty,
                         );
+
+                        ui.label("Playback fps");
+                        let target = self
+                            .video
+                            .as_ref()
+                            .map(|v| v.info.fps * speed)
+                            .unwrap_or(0.0);
+                        ui.label(
+                            egui::RichText::new(format!("{:.1} (target {:.1})", self.measured_fps, target))
+                                .color(egui::Color32::from_gray(150)),
+                        );
+                        ui.end_row();
                     });
 
                 // --- Sound ---
