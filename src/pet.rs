@@ -189,6 +189,14 @@ impl Pet {
                     self.facing_dir = self.vx.signum();
                 }
 
+                // Ceiling bounce (top of the screen)
+                if self.pos.y <= 0.0 {
+                    self.pos.y = 0.0;
+                    if self.vy < 0.0 {
+                        self.vy = -self.vy * BOUNCE;
+                    }
+                }
+
                 // Side walls bounce
                 if self.pos.x <= 0.0 {
                     self.pos.x = 0.0;
@@ -215,6 +223,14 @@ impl Pet {
                 self.vx *= 1.0 - AIR_DRAG * dt;
             }
         }
+
+        // Safety net: the pet must never leave the screen. If the window went
+        // off-screen its updates would stop (egui skips hidden windows) and it
+        // would never come back, so clamp it into the visible area.
+        let max_x = (self.screen.x - self.size.x).max(0.0);
+        let max_y = self.floor_y().max(0.0);
+        self.pos.x = self.pos.x.clamp(0.0, max_x);
+        self.pos.y = self.pos.y.clamp(0.0, max_y);
 
         out
     }

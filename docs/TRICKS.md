@@ -52,6 +52,10 @@ Notes on non-obvious things, already handled or likely to come up.
 - egui pointer positions are **local to the window**. Treating them as global
   makes the pet jump around. Use the incremental formula
   `pos = pos + local - grab` (see `docs/ARCHITECTURE.md`).
+- **Keep the window on screen.** egui stops running the UI pass when a window
+  is hidden/off-screen, so a pet thrown above the top edge would freeze there
+  and never come back. Bounce off the ceiling and clamp `pos` to the monitor
+  bounds as a safety net.
 
 ## Tray
 

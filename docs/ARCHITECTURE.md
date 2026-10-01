@@ -80,7 +80,8 @@ config is reserved for the future.
 - **Sound** — briefly freezes (optional), plays a random file
 - **Dragged** — the window follows the cursor; drag velocity is tracked
 - Release: the pet keeps the drag velocity as throw inertia, flies, bounces
-  off walls and the floor, and can settle (playing a `hit_*` sound on contact)
+  off the walls, the floor and the ceiling, and can settle (playing a `hit_*`
+  sound on contact)
 
 ## Dragging (the important bit)
 
