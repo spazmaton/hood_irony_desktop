@@ -1,6 +1,6 @@
 <div align="center">
   <img src="assets/pet.gif" width="150" alt="Hood Irony pet walking across the desktop">
-  <h1>HOOD IRONY WALKS ACROSS THE DESK</h1>
+  <h1>HOOD IRONY ON YOUR DESKTOP</h1>
   <p><b>Throw it, watch it, do whatever you want with it.</b></p>
   <p>
     <img alt="platform" src="https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square">
