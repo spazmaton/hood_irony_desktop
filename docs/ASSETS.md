@@ -11,12 +11,6 @@
 - Current video: `Hood irony walking - Timmy Turner (720p, h264).mp4`
   — silhouette on a green screen, 720×1280, 44 fps, 13.5 s, 593 frames.
 
-### Chroma key (optional)
-
-The green background is kept by default — it is part of the joke.
-Turning on **Cut out green screen** in Settings switches to shimeji mode:
-the decoder cuts the green out into transparency and the window becomes
-transparent. See `chroma_to_rgba` in `src/video.rs`.
 
 ## Sounds
 
