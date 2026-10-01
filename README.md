@@ -6,6 +6,7 @@
     <img alt="platform" src="https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square">
     <img alt="rust" src="https://img.shields.io/badge/rust-2021-000000?style=flat-square&logo=rust">
     <img alt="status" src="https://img.shields.io/badge/version-0.2-4ade80?style=flat-square">
+    <img alt="license" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
   </p>
 </div>
 
@@ -89,3 +90,7 @@ See [docs/CONFIG.md](docs/CONFIG.md).
 Windows Smart App Control (and some real-time antivirus tools) block unsigned
 executables; if the build or the exe is blocked, turn SAC off / add the project
 folder to your AV exclusions. See [docs/TRICKS.md](docs/TRICKS.md).
+
+## License
+
+[MIT](LICENSE) — do whatever you want with it.
