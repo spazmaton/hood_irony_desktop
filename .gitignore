@@ -3,3 +3,5 @@
 config.toml
 *.log
 *.zip
+err.txt
+out.txt
