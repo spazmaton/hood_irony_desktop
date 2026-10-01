@@ -32,7 +32,7 @@ cargo run --release
 ```
 
 Requires Rust with the MSVC toolchain. FFmpeg is pulled in automatically by
-`ffmpeg_sidecar`; if it is already installed on the system, that one is used.
+`ffmpeg-sidecar`; if it is already installed on the system, that one is used.
 
 ## Build
 

@@ -70,7 +70,7 @@ config is reserved for the future.
    drop  └────┬─────┘        └──────────┘
    ┌──────────┘ release
    │
-   │   gravity → fall to the bottom edge
+   │   throw inertia → bounce off walls/floor → settle
    └────────────────────────► Idle
 ```
 
@@ -121,4 +121,5 @@ assets/
   video/pet.mp4
   sounds/*.mp3|wav
   icon.png
+  pet.gif          // README banner
 ```

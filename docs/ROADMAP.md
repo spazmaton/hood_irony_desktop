@@ -10,15 +10,16 @@
 - [x] Tray icon: Pause / Settings / Quit
 - [x] Settings window with a live preview
 - [x] `config.toml` (size, speeds, sound interval, volume)
-- [x] Accurate video timing (blocking buffer, no dropped frames)
-- [x] Throw physics (drag inertia, bounce, landing sound)
-- [x] Auto-sync of walk animation to walk speed
-- [x] Playback fps readout
-- [ ] Release build
+- [x] Release build
 
 ## v0.2 — polish
 
 - [x] Chroma-key (green screen) cutout option
+- [x] Accurate video timing (blocking buffer, no dropped frames)
+- [x] Throw physics (drag inertia, bounce, landing sound)
+- [x] Auto-sync of walk animation to walk speed
+- [x] Playback fps readout
+- [x] Release build
 - [ ] Volume control from the tray
 - [ ] Remember start position between runs
 - [ ] Multi-monitor support

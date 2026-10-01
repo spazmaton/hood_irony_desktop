@@ -11,6 +11,11 @@
 - Current video: `Hood irony walking - Timmy Turner (720p, h264).mp4`
   — silhouette on a green screen, 720×1280, 44 fps, 13.5 s, 593 frames.
 
+## README banner
+
+- Path: `assets/pet.gif`
+- A short loop cut from the video (`ffmpeg ... palettegen/paletteuse`),
+  shown at the top of the README. Regenerate it if the video changes.
 
 ## Sounds
 

@@ -66,7 +66,9 @@ Notes on non-obvious things, already handled or likely to come up.
 
 ## Build
 
-- `cargo build --release` produces one exe, but ffmpeg-sidecar pulls ffmpeg
-  into its cache on first run on the user's machine. For an offline
-  distribution, ship `ffmpeg.exe` next to the exe.
+- `cargo build --release` produces one exe. `ffmpeg-sidecar` downloads ffmpeg
+  into its own cache on first run; `resolve_ffmpeg()` uses that cache first and
+  then falls back to `ffmpeg` on `PATH`. There is no lookup next to the exe, so
+  for an offline distribution either ship ffmpeg on `PATH` or extend
+  `resolve_ffmpeg()` to check the exe's folder.
 - The exe icon can be set with `winres` in `build.rs`.
