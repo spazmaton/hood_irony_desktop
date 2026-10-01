@@ -1,0 +1,23 @@
+[package]
+name = "hood-irony-desktop"
+version = "0.1.0"
+edition = "2021"
+description = "Hood irony desktop pet: a walking video with random meme sounds"
+
+[dependencies]
+anyhow = "1.0.104"
+eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "glow", "accesskit"] }
+egui = "0.36.2"
+ffmpeg-sidecar = "2.6.0"
+image = "0.25.10"
+rand = "0.10.3"
+raw-window-handle = "0.6"
+rodio = "0.22.2"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.6"
+tray-icon = "0.26.0"
+windows-sys = { version = "0.61.2", features = ["Win32_Graphics_Dwm", "Win32_Foundation"] }
+
+[profile.release]
+opt-level = 2
+lto = true

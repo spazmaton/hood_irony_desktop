@@ -1,0 +1,69 @@
+# Pitfalls and fixes (Windows + egui pet)
+
+Notes on non-obvious things, already handled or likely to come up.
+
+## Window
+
+- **Always-on-top + borderless**: `ViewportBuilder::with_always_on_top()`,
+  `with_decorations(false)`, `with_taskbar(false)`.
+  `with_taskbar(false)` removes the window from both the taskbar and Alt+Tab.
+- **Never steal focus**: `with_active(false)` plus `WS_EX_NOACTIVATE` via Win32.
+- **Square corners**: Windows 11 rounds windows; disable with
+  `DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DONOTROUND)`.
+- **Transparency**: a transparent window shows the `clear_color`. Return
+  `[0,0,0,0]` from `App::clear_color` when you want a truly transparent window,
+  otherwise eframe fills it with an opaque color.
+- egui repaints on request: keep calling
+  `request_repaint_after(Duration::from_secs_f64(1.0 / 60.0))`.
+
+## Smart App Control
+
+- Windows Smart App Control (SAC) blocks **all** unsigned executables. Cargo
+  generates many temporary build-script exes, so builds fail with
+  `os error 4551`. There are no exclusions: SAC must be turned off.
+  Malwarebytes and similar real-time scanners behave the same way — add the
+  project and cargo folders to their exclusions.
+
+## ffmpeg-sidecar
+
+- On first run it downloads ffmpeg (~80 MB) into its cache unless a system
+  ffmpeg is found. `resolve_ffmpeg()` prefers the sidecar copy and falls back
+  to `ffmpeg` from PATH.
+- There is no `ffprobe` in the sidecar package, so `probe()` parses the stderr
+  of `ffmpeg -i <file>` (note the `-i`, otherwise ffmpeg treats the file as an
+  *output* and reports "no video stream").
+- Read rawvideo from stdout in a separate thread with a bounded buffer; never
+  read in the egui update.
+- `-stream_loop -1` loops the input; the decoder runs as fast as it can, so the
+  buffer drops the oldest frames to stay current.
+
+## Window position
+
+- Move the pet with `ViewportCommand::OuterPosition` from the egui update.
+- `OuterPosition` takes **logical** points (egui multiplies by `pixels_per_point`).
+- Only send the command when the position actually changed (> 0.4 pt);
+  redundant window moves make the content stutter.
+
+## Dragging
+
+- egui pointer positions are **local to the window**. Treating them as global
+  makes the pet jump around. Use the incremental formula
+  `pos = pos + local - grab` (see `docs/ARCHITECTURE.md`).
+
+## Tray
+
+- `tray-icon` is created on the main thread before `eframe::run_native`.
+- Poll events with `MenuEvent::receiver().try_recv()`; do not block the egui loop.
+
+## Sound
+
+- `rodio` 0.22 uses `MixerDeviceSink` + `Player` (`OutputStream`/`Sink` were removed).
+- Keep one `Player`: on a new sound, `clear()` then `append()`.
+- With `rand` 0.10, `random_range`/`random_bool` live in the `RngExt` trait.
+
+## Build
+
+- `cargo build --release` produces one exe, but ffmpeg-sidecar pulls ffmpeg
+  into its cache on first run on the user's machine. For an offline
+  distribution, ship `ffmpeg.exe` next to the exe.
+- The exe icon can be set with `winres` in `build.rs`.
