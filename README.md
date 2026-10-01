@@ -21,16 +21,9 @@ sounds. Grab it, fling it, let it bounce off the walls.
 
 ## Features
 
-- 🔁 Looped mp4 playback in an always-on-top, borderless overlay window
-- 🫥 No taskbar entry, no Alt+Tab entry, never steals focus
-- 🚶 Walks along the bottom edge, turns around at screen edges (mirrored video)
-- 🎯 Throw physics: drag velocity becomes inertia, the pet bounces off walls and floor
-- 🔊 Random meme sounds from `assets/sounds/`
-- 🥁 Landing sound (`hit_*.mp3`) when it hits the ground
-- 🔗 Optional auto-sync of the walk animation to the walk speed
-- 📟 Tray icon: Pause / Settings / Quit
-- ⚙️ Settings window with a live preview
-- 🟩 Optional chroma-key (shimeji) mode that cuts out the green screen
+- walk
+- stand
+- fly
 
 ## Run from source
 
