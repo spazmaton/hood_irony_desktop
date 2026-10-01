@@ -140,7 +140,10 @@ impl Pet {
             self.sound_timer -= dt;
             if self.sound_timer <= 0.0 {
                 let mut rng = rand::rng();
-                self.sound_timer = rng.random_range(cfg.sound_interval_min..cfg.sound_interval_max);
+                // Guard against an empty range (min == max) which would panic
+                let lo = cfg.sound_interval_min.max(0.1);
+                let hi = cfg.sound_interval_max.max(lo + 0.1);
+                self.sound_timer = rng.random_range(lo..hi);
                 out.random_sound = true;
             }
         }

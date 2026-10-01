@@ -20,24 +20,17 @@ pub struct SoundPlayer {
 impl SoundPlayer {
     /// Scan the sounds/ folder and start the audio thread.
     pub fn new(sounds_dir: &std::path::Path) -> Self {
-        let sounds: Vec<PathBuf> = std::fs::read_dir(sounds_dir)
-            .map(|rd| {
-                rd.filter_map(|e| e.ok())
-                    .map(|e| e.path())
-                    .filter(|p| {
-                        matches!(
-                            p.extension().and_then(|e| e.to_str()),
-                            Some("mp3") | Some("wav") | Some("ogg") | Some("flac")
-                        )
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+        let sounds = scan_sounds(sounds_dir);
 
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || audio_thread(rx));
 
         Self { tx, sounds }
+    }
+
+    /// Re-scan the sounds folder, so files added while running are picked up.
+    pub fn refresh(&mut self, sounds_dir: &std::path::Path) {
+        self.sounds = scan_sounds(sounds_dir);
     }
 
     /// Play a random sound. Returns an approximate duration in seconds.
@@ -83,6 +76,23 @@ impl SoundPlayer {
     pub fn has_sounds(&self) -> bool {
         !self.sounds.is_empty()
     }
+}
+
+/// Collect supported sound files from a folder.
+fn scan_sounds(dir: &std::path::Path) -> Vec<PathBuf> {
+    std::fs::read_dir(dir)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| {
+                    matches!(
+                        p.extension().and_then(|e| e.to_str()),
+                        Some("mp3") | Some("wav") | Some("ogg") | Some("flac")
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn audio_thread(rx: Receiver<SoundCmd>) {

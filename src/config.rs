@@ -75,11 +75,41 @@ pub fn assets_dir() -> PathBuf {
 }
 
 impl Config {
+    /// Fix out-of-range values so a hand-edited config can never crash the app.
+    pub fn sanitize(&mut self) {
+        if !self.sound_interval_min.is_finite() || self.sound_interval_min < 0.1 {
+            self.sound_interval_min = 0.1;
+        }
+        if !self.sound_interval_max.is_finite() || self.sound_interval_max < self.sound_interval_min + 0.5
+        {
+            self.sound_interval_max = self.sound_interval_min + 0.5;
+        }
+        if !self.pet_width.is_finite() {
+            self.pet_width = 180.0;
+        }
+        self.pet_width = self.pet_width.clamp(24.0, 2000.0);
+        if !self.walk_speed.is_finite() {
+            self.walk_speed = 45.0;
+        }
+        self.walk_speed = self.walk_speed.clamp(1.0, 2000.0);
+        if !self.video_speed.is_finite() {
+            self.video_speed = 0.5;
+        }
+        self.video_speed = self.video_speed.clamp(0.05, 4.0);
+        if !self.volume.is_finite() {
+            self.volume = 0.8;
+        }
+        self.volume = self.volume.clamp(0.0, 1.0);
+    }
+
     pub fn load() -> Self {
         let path = config_path();
         match fs::read_to_string(&path) {
-            Ok(s) => match toml::from_str(&s) {
-                Ok(cfg) => cfg,
+            Ok(s) => match toml::from_str::<Config>(&s) {
+                Ok(mut cfg) => {
+                    cfg.sanitize();
+                    cfg
+                }
                 Err(e) => {
                     eprintln!("Invalid config.toml ({e}), using defaults");
                     Self::default()

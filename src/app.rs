@@ -36,6 +36,9 @@ pub struct App {
     pub measured_fps: f32,
     fps_count: u32,
     fps_window: Instant,
+    /// Folder with sounds, rescanned periodically
+    sounds_dir: std::path::PathBuf,
+    last_sound_scan: Instant,
 }
 
 impl App {
@@ -60,6 +63,8 @@ impl App {
             measured_fps: 0.0,
             fps_count: 0,
             fps_window: Instant::now(),
+            sounds_dir: crate::config::assets_dir().join("sounds"),
+            last_sound_scan: Instant::now(),
         }
     }
 
@@ -205,6 +210,13 @@ impl eframe::App for App {
         self.poll_tray(&ctx);
         self.ensure_video(&ctx);
         self.grab_hwnd(frame);
+
+        // Pick up sounds dropped into the folder while running
+        if self.last_sound_scan.elapsed().as_secs_f32() >= 2.0 {
+            self.last_sound_scan = Instant::now();
+            let dir = self.sounds_dir.clone();
+            self.sound.refresh(&dir);
+        }
 
         let dt = ctx.input(|i| i.stable_dt) as f64;
         let monitor = ctx
@@ -496,25 +508,24 @@ impl App {
                         );
                         ui.label("Interval, sec");
                         ui.horizontal(|ui| {
-                            if ui
+                            let changed_min = ui
                                 .add(
                                     egui::DragValue::new(&mut self.cfg.sound_interval_min)
-                                        .range(1.0..=self.cfg.sound_interval_max)
+                                        .range(0.1..=600.0)
                                         .speed(1.0),
                                 )
-                                .changed()
-                            {
-                                self.dirty = true;
-                            }
+                                .changed();
                             ui.label("to");
-                            if ui
+                            let changed_max = ui
                                 .add(
                                     egui::DragValue::new(&mut self.cfg.sound_interval_max)
-                                        .range(self.cfg.sound_interval_min..=600.0)
+                                        .range(0.1..=600.0)
                                         .speed(1.0),
                                 )
-                                .changed()
-                            {
+                                .changed();
+                            if changed_min || changed_max {
+                                // Keep min < max so the random range is never empty
+                                self.cfg.sanitize();
                                 self.dirty = true;
                             }
                         });
