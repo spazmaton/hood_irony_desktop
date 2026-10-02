@@ -1,4 +1,4 @@
-﻿//! egui application: the pet window, video rendering and interaction.
+//! egui application: the pet window, video rendering and interaction.
 //! eframe 0.36: the main method is `App::ui`, the context comes from `ui.ctx()`.
 
 use crate::config::Config;
@@ -20,6 +20,8 @@ pub struct App {
     pub sound: SoundPlayer,
     pub tray: Option<Tray>,
     pub video_inited: bool,
+    pub applied_chroma_key: bool,
+    pub video_needs_refresh: bool,
     pub hwnd: Option<isize>,
     pub settings_open: bool,
     pub applied_width: f32,
@@ -45,6 +47,7 @@ pub struct App {
 
 impl App {
     pub fn new(cfg: Config, sound: SoundPlayer, tray: Option<Tray>) -> Self {
+        let applied_chroma_key = cfg.chroma_key;
         Self {
             cfg,
             video: None,
@@ -53,6 +56,8 @@ impl App {
             sound,
             tray,
             video_inited: false,
+            applied_chroma_key,
+            video_needs_refresh: false,
             hwnd: None,
             settings_open: false,
             applied_width: 0.0,
@@ -89,15 +94,20 @@ impl App {
                 self.aspect = player.info.src_height as f32 / player.info.src_width as f32;
                 let logical_w = self.cfg.pet_width;
                 let logical_h = logical_w * self.aspect;
+                let screen = ctx
+                    .input(|i| i.viewport().monitor_size)
+                    .unwrap_or(egui::Vec2::new(1920.0, 1080.0));
                 self.pet = Some(Pet::new(
                     egui::Vec2::new(logical_w, logical_h),
-                    egui::Vec2::new(1920.0, 1080.0),
+                    screen,
+                    &self.cfg,
                 ));
                 self.video = Some(player);
                 self.applied_width = logical_w;
+                self.applied_chroma_key = self.cfg.chroma_key;
+                self.video_needs_refresh = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::Vec2::new(
-                    logical_w,
-                    logical_h,
+                    logical_w, logical_h,
                 )));
             }
             Err(e) => eprintln!("Failed to open video: {e:#}"),
@@ -106,13 +116,7 @@ impl App {
 
     fn build_decoder(&self, video_path: &std::path::Path) -> Result<VideoPlayer, anyhow::Error> {
         let phys_w = (self.cfg.pet_width * self.ppp).round().max(2.0);
-        let phys_h = (phys_w * self.aspect).round().max(2.0);
-        VideoPlayer::open(
-            video_path,
-            phys_w as u32,
-            phys_h as u32,
-            self.cfg.chroma_key,
-        )
+        VideoPlayer::open(video_path, phys_w as u32, self.cfg.chroma_key)
     }
 
     fn poll_tray(&mut self, ctx: &egui::Context) {
@@ -144,11 +148,13 @@ impl App {
     /// Pull video frames according to real elapsed time.
     /// Uses an accumulator so playback stays in sync even if repaints are uneven.
     fn update_video_frame(&mut self, ctx: &egui::Context, dt: f64) {
-        let animate = self.cfg.animate_when_idle
-            || self.pet.as_ref().map(|p| p.animating()).unwrap_or(true);
+        let animate = !self.cfg.paused
+            && (self.cfg.animate_when_idle
+                || self.pet.as_ref().map(|p| p.animating()).unwrap_or(true));
+        let needs_refresh = self.video_needs_refresh;
 
         let Some(video) = &self.video else { return };
-        if !animate {
+        if !animate && !needs_refresh {
             self.frame_accum = 0.0;
             return;
         }
@@ -166,6 +172,9 @@ impl App {
                 break;
             }
         }
+        if needs_refresh {
+            advance = advance.max(1);
+        }
         if advance == 0 {
             return;
         }
@@ -180,6 +189,7 @@ impl App {
             }
         }
         if let Some(bytes) = last {
+            self.video_needs_refresh = false;
             self.fps_count += advance;
             let img = egui::ColorImage::from_rgba_unmultiplied(
                 [video.width as usize, video.height as usize],
@@ -288,7 +298,7 @@ impl eframe::App for App {
         }
 
         self.show_settings(&ctx);
-        self.apply_size_if_changed(&ctx);
+        self.apply_video_options_if_changed(&ctx);
 
         ctx.request_repaint_after(Duration::from_secs_f64(1.0 / 60.0));
     }
@@ -396,12 +406,12 @@ impl App {
                         ui.add_space(4.0);
                         ui.label(egui::RichText::new("Hood Irony").heading().strong());
                         ui.label(
-                            egui::RichText::new("Meme desktop pet")
+                            egui::RichText::new("A small desktop companion")
                                 .color(egui::Color32::from_gray(150)),
                         );
                         ui.add_space(6.0);
                         ui.label(
-                            egui::RichText::new("Right-click the tray icon for the menu")
+                            egui::RichText::new("Right-click the tray icon to open the menu")
                                 .small()
                                 .color(egui::Color32::from_gray(120)),
                         );
@@ -419,7 +429,7 @@ impl App {
                         row_check(ui, "Pause", &mut self.cfg.paused, &mut self.dirty);
                         row_slider(
                             ui,
-                            "Size, px",
+                            "Width, px",
                             &mut self.cfg.pet_width,
                             100.0..=400.0,
                             "",
@@ -427,7 +437,7 @@ impl App {
                         );
                         row_slider(
                             ui,
-                            "Walk speed",
+                            "Walking speed",
                             &mut self.cfg.walk_speed,
                             10.0..=200.0,
                             " px/s",
@@ -443,15 +453,14 @@ impl App {
                     .spacing([12.0, 10.0])
                     .show(ui, |ui| {
                         let sync = &mut self.cfg.animation_sync;
-                        row_check(ui, "Sync to walk speed", sync, &mut self.dirty);
+                        row_check(ui, "Sync animation to walking speed", sync, &mut self.dirty);
 
                         ui.label("Video speed");
                         let enabled = !self.cfg.animation_sync;
                         if ui
                             .add_enabled(
                                 enabled,
-                                egui::Slider::new(&mut self.cfg.video_speed, 0.1..=1.5)
-                                    .suffix("x"),
+                                egui::Slider::new(&mut self.cfg.video_speed, 0.1..=1.5).suffix("×"),
                             )
                             .changed()
                         {
@@ -460,7 +469,7 @@ impl App {
                         ui.end_row();
 
                         if self.cfg.animation_sync {
-                            ui.label("Walk speed at 1x");
+                            ui.label("Walking speed at 1×");
                             if ui
                                 .add(
                                     egui::DragValue::new(&mut self.cfg.sync_walk_at_1x)
@@ -482,15 +491,18 @@ impl App {
                             &mut self.dirty,
                         );
 
-                        ui.label("Playback fps");
+                        ui.label("Frames per second");
                         let target = self
                             .video
                             .as_ref()
                             .map(|v| v.info.fps * speed)
                             .unwrap_or(0.0);
                         ui.label(
-                            egui::RichText::new(format!("{:.1} (target {:.1})", self.measured_fps, target))
-                                .color(egui::Color32::from_gray(150)),
+                            egui::RichText::new(format!(
+                                "{:.1} (target: {:.1})",
+                                self.measured_fps, target
+                            ))
+                            .color(egui::Color32::from_gray(150)),
                         );
                         ui.end_row();
                     });
@@ -541,7 +553,7 @@ impl App {
                                 }
                             });
                         ui.end_row();
-                        ui.label("Interval, sec");
+                        ui.label("Sound interval, sec");
                         ui.horizontal(|ui| {
                             let changed_min = ui
                                 .add(
@@ -567,19 +579,17 @@ impl App {
                         ui.end_row();
                         row_check(
                             ui,
-                            "Freeze while playing sound",
+                            "Freeze pet while a sound plays",
                             &mut self.cfg.stop_on_sound,
                             &mut self.dirty,
                         );
                         let n = self.sound.sounds.len();
-                        ui.label("Files in sounds/");
-                        ui.label(
-                            egui::RichText::new(format!("{n}")).color(if n == 0 {
-                                egui::Color32::from_rgb(220, 120, 120)
-                            } else {
-                                egui::Color32::from_rgb(120, 220, 150)
-                            }),
-                        );
+                        ui.label("Sound files");
+                        ui.label(egui::RichText::new(format!("{n}")).color(if n == 0 {
+                            egui::Color32::from_rgb(220, 120, 120)
+                        } else {
+                            egui::Color32::from_rgb(120, 220, 150)
+                        }));
                         ui.end_row();
                     });
 
@@ -597,13 +607,13 @@ impl App {
                     .show(ui, |ui| {
                         row_check(
                             ui,
-                            "Cut out green screen",
+                            "Remove green background",
                             &mut self.cfg.chroma_key,
                             &mut self.dirty,
                         );
                         ui.label("");
                         ui.label(
-                            egui::RichText::new("On = shimeji mode, off = green screen")
+                            egui::RichText::new("Off: show the original green background")
                                 .small()
                                 .color(egui::Color32::from_gray(120)),
                         );
@@ -624,10 +634,14 @@ impl App {
                 ui.separator();
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
-                    if ui.button("Reset").clicked() {
+                    if ui.button("Reset settings").clicked() {
                         let paused = self.cfg.paused;
+                        let previous_device = self.cfg.audio_device.clone();
                         self.cfg = Config::default();
                         self.cfg.paused = paused;
+                        if self.cfg.audio_device != previous_device {
+                            self.sound = SoundPlayer::new(&self.sounds_dir, &self.cfg.audio_device);
+                        }
                         self.dirty = true;
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -655,30 +669,43 @@ impl App {
         }
     }
 
-    fn apply_size_if_changed(&mut self, ctx: &egui::Context) {
-        if !self.video_inited || (self.cfg.pet_width - self.applied_width).abs() < 0.5 {
+    fn apply_video_options_if_changed(&mut self, ctx: &egui::Context) {
+        let width_changed = (self.cfg.pet_width - self.applied_width).abs() >= 0.5;
+        let chroma_changed = self.cfg.chroma_key != self.applied_chroma_key;
+        if !self.video_inited || (!width_changed && !chroma_changed) {
             return;
         }
         let logical_w = self.cfg.pet_width;
         let logical_h = logical_w * self.aspect;
 
         if let Some(pet) = &mut self.pet {
+            let old_size = pet.size;
             pet.size = egui::Vec2::new(logical_w, logical_h);
-            pet.pos.y = pet.floor_y_pub();
+            // Keep the bottom edge in place when resizing, including mid-flight.
+            pet.pos.y += old_size.y - logical_h;
+            pet.pos.x = pet.pos.x.clamp(0.0, (pet.screen.x - logical_w).max(0.0));
+            pet.pos.y = pet.pos.y.clamp(0.0, pet.floor_y_pub().max(0.0));
         }
 
         let video_path = crate::config::assets_dir().join("video").join("pet.mp4");
         if video_path.exists() {
             match self.build_decoder(&video_path) {
-                Ok(player) => self.video = Some(player),
+                Ok(player) => {
+                    self.video = Some(player);
+                    self.video_needs_refresh = true;
+                    self.frame_accum = 0.0;
+                }
                 Err(e) => eprintln!("Failed to rebuild decoder: {e:#}"),
             }
         }
+        // Avoid retrying a failed decoder rebuild every UI frame.
         self.applied_width = logical_w;
-        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::Vec2::new(
-            logical_w,
-            logical_h,
-        )));
+        self.applied_chroma_key = self.cfg.chroma_key;
+        if width_changed {
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::Vec2::new(
+                logical_w, logical_h,
+            )));
+        }
     }
 }
 

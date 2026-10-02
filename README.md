@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="assets/pet.gif" width="150" alt="Hood Irony pet walking across the desktop">
-  <h1>HOOD IRONY ON YOUR DESKTOP</h1>
-  <p><b>Throw it, watch it, do whatever you want with it.</b></p>
+  <img src="assets/pet.gif" width="150" alt="Hood Irony walking across the desktop">
+  <h1>HOOD IRONY DESKTOP PET</h1>
+  <p><b>A lightweight animated companion for Windows.</b></p>
   <p>
     <img alt="platform" src="https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square">
     <img alt="rust" src="https://img.shields.io/badge/rust-2021-000000?style=flat-square&logo=rust">
@@ -12,18 +12,23 @@
 
 ---
 
-A tiny Windows desktop pet: the black silhouette from the **hood irony** meme
-(a green-screen video) strolls along your screen and randomly blurts out meme
-sounds. Grab it, fling it, let it bounce off the walls.
+Hood Irony is a small Windows desktop pet built from a looping video. It walks
+across the screen, occasionally plays meme sounds, and reacts to dragging: pick
+it up, toss it, and watch it bounce off the screen edges.
 
-> The pet literally *is* a vertical video walking around your desktop.
-> The green screen is a feature, not a bug.
+Keep the green background for the original meme look, or remove it in Settings.
 
 ## Features
 
-- walk
-- stand
-- fly
+- Walks and pauses from time to time.
+- Follows the cursor when dragged, then falls and bounces when thrown.
+- Plays random sounds and separate landing sounds.
+- Lets you adjust its size, speed, volume, and other settings.
+- Can be controlled from the system tray menu.
+
+The pet currently runs in a single floating window. It does not walk on top of
+other windows or the taskbar, and multi-monitor behavior has not been
+implemented. It is a lightweight desktop companion rather than a full Shimeji.
 
 ## Run from source
 
@@ -31,8 +36,8 @@ sounds. Grab it, fling it, let it bounce off the walls.
 cargo run --release
 ```
 
-Requires Rust with the MSVC toolchain. FFmpeg is pulled in automatically by
-`ffmpeg-sidecar`; if it is already installed on the system, that one is used.
+Requires Rust with the MSVC toolchain. On first run, `ffmpeg-sidecar` downloads
+FFmpeg if a system installation is not available.
 
 ## Build
 
@@ -40,50 +45,50 @@ Requires Rust with the MSVC toolchain. FFmpeg is pulled in automatically by
 cargo build --release
 ```
 
-Binary: `target/release/hood-irony-desktop.exe`
+The executable is written to `target/release/hood-irony-desktop.exe`.
 
 ## Assets
 
-| Folder | What to put there |
+| Path | Contents |
 |---|---|
-| `assets/video/` | `pet.mp4` — the pet video (loops automatically) |
-| `assets/sounds/` | `*.mp3` / `*.wav` — sounds, `hit_*` for landings |
-| `assets/icon.png` | tray icon (64×64) |
+| `assets/video/pet.mp4` | Pet video; loops automatically |
+| `assets/sounds/` | MP3, WAV, OGG, or FLAC sounds; files named `hit_*` are used for landings |
+| `assets/icon.png` | System tray icon (64×64 recommended) |
 
-See [docs/ASSETS.md](docs/ASSETS.md).
+See [docs/ASSETS.md](docs/ASSETS.md) for details.
 
 ## Configuration
 
-`config.toml` is created next to the exe on first run (in the project root in
-debug builds). It can also be edited live in the Settings window.
-See [docs/CONFIG.md](docs/CONFIG.md).
+On first run, `config.toml` is created next to the executable (in the project
+root for debug builds). Settings are also available in the app window. See
+[docs/CONFIG.md](docs/CONFIG.md) for details.
 
-## Right-click the tray icon
+## Tray menu
 
-- **Pause** — the pet stops moving and animating
-- **Settings** — size, speeds, sound interval, volume, chroma key
-- **Quit** — closes the pet
+- **Pause** — pauses the pet.
+- **Settings** — adjust size, speed, sound, and appearance.
+- **Quit** — close the app.
 
 ## Documentation
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — architecture, crates, state machine
-- [docs/ROADMAP.md](docs/ROADMAP.md) — development stages and status
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — application structure and behavior
+- [docs/ROADMAP.md](docs/ROADMAP.md) — development roadmap
 - [docs/ASSETS.md](docs/ASSETS.md) — video and sound requirements
-- [docs/CONFIG.md](docs/CONFIG.md) — config options
-- [docs/TRICKS.md](docs/TRICKS.md) — Windows/egui pitfalls and fixes
+- [docs/CONFIG.md](docs/CONFIG.md) — `config.toml` options
+- [docs/TRICKS.md](docs/TRICKS.md) — Windows and egui notes
 
 ## Roadmap
 
-- **v0.3** — walk on top of window title bars and the taskbar (real shimeji),
-  fall/jump off when a window moves or closes
-- Later — click reactions, multiple video costumes, launch on startup
+- **v0.3** — walk on top of application windows and the taskbar.
+- Later — click reactions, alternate videos, and launch on Windows startup.
 
-## Notes
+## Security note
 
-Windows Smart App Control (and some real-time antivirus tools) block unsigned
-executables; if the build or the exe is blocked, turn SAC off / add the project
-folder to your AV exclusions. See [docs/TRICKS.md](docs/TRICKS.md).
+This build is unsigned, so Windows or antivirus software may show a warning.
+Do not disable security protections or add broad exclusions just to run it.
+Build from source or use a binary from a source you trust. See
+[docs/TRICKS.md](docs/TRICKS.md) for more Windows notes.
 
 ## License
 
-[MIT](LICENSE) — do whatever you want with it.
+[MIT](LICENSE) — see the license file for terms.

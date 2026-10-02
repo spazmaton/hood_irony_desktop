@@ -25,7 +25,7 @@ impl Tray {
 
         let tray = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
-            .with_tooltip("Hood Irony Desktop")
+            .with_tooltip("Hood Irony Desktop Pet")
             .with_icon(icon)
             .build()?;
 

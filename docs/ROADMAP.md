@@ -1,42 +1,42 @@
 # Roadmap
 
-## v0.1 — base pet
+## v0.1 — Base pet
 
-- [x] Project skeleton: cargo, eframe, borderless always-on-top window
-- [x] Video decoder via ffmpeg-sidecar, looped playback
-- [x] Walk along the bottom edge, turn around at edges (mirroring)
-- [x] Random sounds via rodio
-- [x] Drag with the mouse + gravity fall
-- [x] Tray icon: Pause / Settings / Quit
+- [x] Project skeleton: Cargo, eframe, borderless always-on-top window
+- [x] Video decoding and looping through ffmpeg-sidecar
+- [x] Walk along the bottom edge and turn around at screen boundaries
+- [x] Random sounds through rodio
+- [x] Dragging and gravity-based falling
+- [x] Tray menu: Pause / Settings / Quit
 - [x] Settings window with a live preview
-- [x] `config.toml` (size, speeds, sound interval, volume)
+- [x] `config.toml` for size, speed, sound interval, and volume
 - [x] Release build
 
-## v0.2 — polish
+## v0.2 — Polish
 
-- [x] Chroma-key (green screen) cutout option
-- [x] Accurate video timing (blocking buffer, no dropped frames)
-- [x] Throw physics (drag inertia, bounce, landing sound)
-- [x] Auto-sync of walk animation to walk speed
-- [x] Playback fps readout
+- [x] Green-screen removal (chroma key)
+- [x] Time-based video playback
+- [x] Throw inertia, bounces, and landing sounds
+- [x] Sync walking animation to movement speed
+- [x] Show playback frame rate in Settings
 - [x] Release build
-- [ ] Volume control from the tray
-- [ ] Remember start position between runs
+- [ ] Volume control in the tray menu
+- [ ] Remember the pet's position between runs
 - [ ] Multi-monitor support
 
-## v0.3 — real shimeji
+## v0.3 — Walk on windows
 
-- [ ] Walk on top of window title bars / the taskbar (WinAPI `EnumWindows`)
-- [ ] Fall / jump off when a window moves or closes
-- [ ] Climb window edges
+- [ ] Walk on window title bars and the taskbar using WinAPI `EnumWindows`
+- [ ] Fall or jump when a window moves or closes
+- [ ] Climb along window edges
 
-## v??? — ideas
+## Future ideas
 
-- [ ] Click reactions (effects / sounds)
-- [ ] Multiple video costumes (switch from the tray)
+- [ ] Mouse-click reactions, effects, and sounds
+- [ ] Alternate video costumes selectable from the tray menu
 - [ ] Launch on Windows startup
 
 ## Status
 
-Current: v0.2 — video timing fixed, throw physics and animation sync added.
-
+Current version: v0.2, with synchronized video timing, throw physics, and
+walking-animation sync.

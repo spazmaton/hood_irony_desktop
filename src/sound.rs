@@ -1,4 +1,4 @@
-﻿//! Sound: a dedicated thread owns the audio device and receives commands over a channel.
+//! Sound: a dedicated thread owns the audio device and receives commands over a channel.
 //! rodio 0.22: MixerDeviceSink + Player (OutputStream/Sink were removed).
 
 use rand::RngExt;
@@ -7,7 +7,10 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 pub enum SoundCmd {
-    Play { path: PathBuf, volume: f32 },
+    Play {
+        path: PathBuf,
+        volume: f32,
+    },
     /// Reserved: volume control from the tray (v0.2)
     #[allow(dead_code)]
     SetVolume(f32),
@@ -99,7 +102,10 @@ impl SoundPlayer {
         }
         let mut rng = rand::rng();
         let path = hits[rng.random_range(0..hits.len())].clone();
-        let _ = self.tx.send(SoundCmd::Play { path: path.clone(), volume });
+        let _ = self.tx.send(SoundCmd::Play {
+            path: path.clone(),
+            volume,
+        });
         true
     }
 
@@ -121,10 +127,15 @@ fn scan_sounds(dir: &std::path::Path) -> Vec<PathBuf> {
             rd.filter_map(|e| e.ok())
                 .map(|e| e.path())
                 .filter(|p| {
-                    matches!(
-                        p.extension().and_then(|e| e.to_str()),
-                        Some("mp3") | Some("wav") | Some("ogg") | Some("flac")
-                    )
+                    p.extension()
+                        .and_then(|e| e.to_str())
+                        .map(|ext| {
+                            ext.eq_ignore_ascii_case("mp3")
+                                || ext.eq_ignore_ascii_case("wav")
+                                || ext.eq_ignore_ascii_case("ogg")
+                                || ext.eq_ignore_ascii_case("flac")
+                        })
+                        .unwrap_or(false)
                 })
                 .collect()
         })
@@ -136,7 +147,11 @@ fn audio_thread(rx: Receiver<SoundCmd>, device: String) {
         Ok(s) => {
             eprintln!(
                 "[sound] audio device opened: {}",
-                if device.is_empty() { "<system default>" } else { &device }
+                if device.is_empty() {
+                    "<system default>"
+                } else {
+                    &device
+                }
             );
             s
         }

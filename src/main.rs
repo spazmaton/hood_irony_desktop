@@ -14,20 +14,20 @@ fn main() -> Result<()> {
     let video_path = video_dir.join("pet.mp4");
     anyhow::ensure!(
         video_path.exists(),
-        "Video not found: {}\nPut an mp4 at assets/video/pet.mp4",
+        "Video file not found: {}\nPlace an MP4 at assets/video/pet.mp4",
         video_path.display()
     );
 
     // ffmpeg must be available (auto-downloaded on first run if missing)
     if !video::ffmpeg_available() {
-        println!("ffmpeg not found, downloading (one time, ~80 MB)...");
-        ffmpeg_sidecar::download::auto_download().context("failed to download ffmpeg")?;
+        println!("FFmpeg not found; downloading it once (~80 MB)...");
+        ffmpeg_sidecar::download::auto_download().context("failed to download FFmpeg")?;
     }
 
     let sounds_dir = config::assets_dir().join("sounds");
     let sound = sound::SoundPlayer::new(&sounds_dir, &cfg.audio_device);
     if !sound.has_sounds() {
-        eprintln!("No sounds in assets/sounds/ — the pet will walk silently");
+        eprintln!("No audio files in assets/sounds/ — the pet will be silent");
     }
 
     // Tray (created on the main thread before eframe)
@@ -40,7 +40,9 @@ fn main() -> Result<()> {
             .with_decorations(false)
             .with_resizable(false)
             .with_taskbar(false)
-            .with_transparent(cfg.chroma_key)
+            // Keep the native window transparency-capable so chroma key can be
+            // toggled from Settings without recreating the viewport.
+            .with_transparent(true)
             .with_active(false),
         ..Default::default()
     };
@@ -50,7 +52,7 @@ fn main() -> Result<()> {
         options,
         Box::new(move |_cc| Ok(Box::new(app::App::new(cfg, sound, tray)))),
     )
-    .map_err(|e| anyhow::anyhow!("eframe exited with an error: {e}"))?;
+    .map_err(|e| anyhow::anyhow!("failed to start the application window: {e}"))?;
 
     Ok(())
 }
@@ -73,12 +75,12 @@ fn load_tray() -> Option<tray::Tray> {
         Some((rgba, w, h)) => match tray::Tray::new(rgba, (w, h)) {
             Ok(t) => Some(t),
             Err(e) => {
-                eprintln!("Tray unavailable: {e:#}");
+                eprintln!("Tray icon unavailable: {e:#}");
                 None
             }
         },
         None => {
-            eprintln!("Missing tray icon {:?}", icon_path);
+            eprintln!("Missing tray icon: {:?}", icon_path);
             None
         }
     }

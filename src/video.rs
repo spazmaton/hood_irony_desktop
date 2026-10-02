@@ -73,7 +73,9 @@ impl FrameBuffer {
         if q.is_empty() {
             let (guard, _timeout) = self
                 .cond
-                .wait_timeout_while(q, wait, |q| q.is_empty() && !self.closed.load(Ordering::Relaxed))
+                .wait_timeout_while(q, wait, |q| {
+                    q.is_empty() && !self.closed.load(Ordering::Relaxed)
+                })
                 .unwrap();
             q = guard;
         }
@@ -87,16 +89,14 @@ impl FrameBuffer {
 }
 
 impl VideoPlayer {
-    /// Open a video. `out_width`/`out_height` are the output frame size.
+    /// Open a video at `out_width`, preserving the source aspect ratio.
     /// `chroma_key` cuts the green background out into transparency.
-    pub fn open(
-        video_path: &Path,
-        out_width: u32,
-        out_height: u32,
-        chroma_key: bool,
-    ) -> Result<Self> {
-        let info = probe(video_path)
-            .with_context(|| format!("ffmpeg could not read {:?}", video_path))?;
+    pub fn open(video_path: &Path, out_width: u32, chroma_key: bool) -> Result<Self> {
+        let info =
+            probe(video_path).with_context(|| format!("ffmpeg could not read {:?}", video_path))?;
+        let out_height = ((out_width as f32 * info.src_height as f32 / info.src_width as f32)
+            .round() as u32)
+            .max(2);
         let player = Self {
             width: out_width,
             height: out_height,
@@ -189,7 +189,11 @@ impl VideoPlayer {
 
     /// Duration of a single video frame
     pub fn frame_interval(&self) -> Duration {
-        let fps = if self.info.fps > 1.0 { self.info.fps } else { 30.0 };
+        let fps = if self.info.fps > 1.0 {
+            self.info.fps
+        } else {
+            30.0
+        };
         Duration::from_secs_f64(1.0 / fps as f64)
     }
 

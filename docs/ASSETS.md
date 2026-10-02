@@ -3,30 +3,30 @@
 ## Pet video
 
 - Path: `assets/video/pet.mp4`
-- Format: anything ffmpeg can read (mp4/h264 is the reference)
-- Orientation: vertical (9:16) — the pet window follows the video aspect
-- Audio track: ignored (muted), can be absent
-- Looping: built in (`-stream_loop -1`); ideally the first and last frames
-  match so the seam is invisible
-- Current video: `Hood irony walking - Timmy Turner (720p, h264).mp4`
-  — silhouette on a green screen, 720×1280, 44 fps, 13.5 s, 593 frames.
+- Format: anything FFmpeg can read; MP4/H.264 is a good choice.
+- Orientation: portrait. The pet window follows the video's aspect ratio.
+- The video's audio track is not played, so it can be omitted.
+- The video loops using `-stream_loop -1`. For a seamless loop, make the first
+  and last frames similar.
+- The reference video, `Hood irony walking - Timmy Turner (720p, h264).mp4`,
+  shows a silhouette on a green screen at 720×1280, 44 fps, and 13.5 seconds.
 
 ## README banner
 
 - Path: `assets/pet.gif`
-- A short loop cut from the video (`ffmpeg ... palettegen/paletteuse`),
-  shown at the top of the README. Regenerate it if the video changes.
+- A short video loop shown at the top of the README. Regenerate it with FFmpeg's
+  `palettegen`/`paletteuse` filters if the video changes.
 
 ## Sounds
 
 - Path: `assets/sounds/`
-- Format: `*.mp3` or `*.wav`, any names (ASCII without spaces is safer)
-- How many: 3–10 short clips (1–5 s) from the hood irony meme
-- Selection: random file at a random interval (default 30–120 s)
-- Landing: files whose name starts with `hit_` (e.g. `hit_slap.mp3`) play
-  when the pet hits the ground after a throw/drag
+- Formats: MP3, WAV, OGG, or FLAC. File extensions are case-insensitive.
+- Random sounds are selected at the interval set in Settings (30–120 seconds
+  by default).
+- Files whose names start with `hit_` (for example, `hit_slap.mp3`) are used
+  when the pet lands after a throw.
 
 ## Tray icon
 
 - Path: `assets/icon.png`
-- A small 64×64 square; the silhouette on green works great
+- A square image around 64×64 pixels is recommended.

@@ -80,13 +80,15 @@ pub fn assets_dir() -> PathBuf {
 impl Config {
     /// Fix out-of-range values so a hand-edited config can never crash the app.
     pub fn sanitize(&mut self) {
-        if !self.sound_interval_min.is_finite() || self.sound_interval_min < 0.1 {
-            self.sound_interval_min = 0.1;
+        if !self.sound_interval_min.is_finite() {
+            self.sound_interval_min = 30.0;
         }
-        if !self.sound_interval_max.is_finite() || self.sound_interval_max < self.sound_interval_min + 0.5
-        {
-            self.sound_interval_max = self.sound_interval_min + 0.5;
+        self.sound_interval_min = self.sound_interval_min.clamp(0.1, 599.5);
+        if !self.sound_interval_max.is_finite() {
+            self.sound_interval_max = 120.0;
         }
+        self.sound_interval_max = self.sound_interval_max.clamp(0.6, 600.0);
+        self.sound_interval_max = self.sound_interval_max.max(self.sound_interval_min + 0.5);
         if !self.pet_width.is_finite() {
             self.pet_width = 180.0;
         }
@@ -99,6 +101,10 @@ impl Config {
             self.video_speed = 0.5;
         }
         self.video_speed = self.video_speed.clamp(0.05, 4.0);
+        if !self.sync_walk_at_1x.is_finite() {
+            self.sync_walk_at_1x = 45.0;
+        }
+        self.sync_walk_at_1x = self.sync_walk_at_1x.clamp(5.0, 300.0);
         if !self.volume.is_finite() {
             self.volume = 0.8;
         }

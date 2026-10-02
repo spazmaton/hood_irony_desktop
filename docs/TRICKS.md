@@ -16,13 +16,13 @@ Notes on non-obvious things, already handled or likely to come up.
 - egui repaints on request: keep calling
   `request_repaint_after(Duration::from_secs_f64(1.0 / 60.0))`.
 
-## Smart App Control
+## Windows security warnings
 
-- Windows Smart App Control (SAC) blocks **all** unsigned executables. Cargo
-  generates many temporary build-script exes, so builds fail with
-  `os error 4551`. There are no exclusions: SAC must be turned off.
-  Malwarebytes and similar real-time scanners behave the same way — add the
-  project and cargo folders to their exclusions.
+- Unsigned builds may trigger SmartScreen or antivirus warnings. Do not turn off
+  Smart App Control or real-time protection, and do not add broad folder
+  exclusions just to run the app.
+- Build from source you trust. If a specific build is blocked, check the
+  protection history and your security vendor's guidance before taking action.
 
 ## ffmpeg-sidecar
 

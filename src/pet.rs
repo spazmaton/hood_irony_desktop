@@ -44,6 +44,9 @@ pub struct Pet {
     drag_vel: egui::Vec2,
     /// Current facing direction (1 = right, -1 = left)
     facing_dir: f32,
+    /// State and timer to resume after a sound temporarily freezes movement
+    sound_return_state: State,
+    sound_return_timer: f32,
 }
 
 const GRAVITY: f32 = 2200.0;
@@ -52,21 +55,23 @@ const AIR_DRAG: f32 = 0.6;
 const MAX_THROW: f32 = 2600.0;
 
 impl Pet {
-    pub fn new(size: egui::Vec2, screen: egui::Vec2) -> Self {
+    pub fn new(size: egui::Vec2, screen: egui::Vec2, cfg: &Config) -> Self {
         let mut rng = rand::rng();
         let dir: f32 = if rng.random_bool(0.5) { 1.0 } else { -1.0 };
         Self {
-            pos: egui::Vec2::new(screen.x * 0.5 - size.x * 0.5, screen.y - size.y - 48.0),
+            pos: egui::Vec2::new(screen.x * 0.5 - size.x * 0.5, screen.y - size.y),
             vx: 40.0 * dir,
             vy: 0.0,
             state: State::Idle,
             timer: 1.0,
-            sound_timer: rng.random_range(8.0..20.0), // first sound early, for testing
+            sound_timer: rng.random_range(cfg.sound_interval_min..cfg.sound_interval_max),
             screen,
             size,
             grab: egui::Vec2::ZERO,
             drag_vel: egui::Vec2::ZERO,
             facing_dir: dir,
+            sound_return_state: State::Idle,
+            sound_return_timer: 1.0,
         }
     }
 
@@ -123,6 +128,10 @@ impl Pet {
 
     pub fn play_sound(&mut self, duration: f32, cfg: &Config) {
         if cfg.stop_on_sound {
+            if self.state != State::Sound {
+                self.sound_return_state = self.state;
+                self.sound_return_timer = self.timer;
+            }
             self.state = State::Sound;
             self.timer = duration.max(0.5);
         }
@@ -178,7 +187,8 @@ impl Pet {
             State::Sound => {
                 self.timer -= dt;
                 if self.timer <= 0.0 {
-                    self.state = State::Walk;
+                    self.state = self.sound_return_state;
+                    self.timer = self.sound_return_timer;
                 }
             }
             State::Dragged => {
